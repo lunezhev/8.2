@@ -1,12 +1,6 @@
 ---
 - name: Install Vector
   hosts: vector
-  # handlers:
-  #   - name: Start vector service
-  #     become: true
-  #     ansible.builtin.service:
-  #       name: vector-server
-  #       state: restarted
   tasks:
     - name: Get Vector distrib
       ansible.builtin.get_url:
@@ -36,7 +30,6 @@
         src: templates/vector.sh.j2
         dest: /etc/profile.d/vector.sh
         mode: 0755
-#      notify: Start Vector service
       tags: env
 - name: Install Clickhouse
   hosts: clickhouse
