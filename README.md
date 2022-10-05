@@ -10,6 +10,9 @@
 ## Основная часть
 
 1. Приготовьте свой собственный inventory файл `prod.yml`.
+<details>
+<summary>prod.yml</summary>
+
 ```
 ad@k8s:~/8.2/playbook$ cat inventory/prod.yml
 ---
@@ -22,20 +25,26 @@ vector:
     vector-01:
       ansible_connection: docker
 ```
+</details>
+
 2. Допишите playbook: нужно сделать ещё один play, который устанавливает и настраивает [vector](https://vector.dev).
 3. При создании tasks рекомендую использовать модули: `get_url`, `template`, `unarchive`, `file`.
 4. Tasks должны: скачать нужной версии дистрибутив, выполнить распаковку в выбранную директорию, установить vector.
+
+<details>
+<summary>Подготовка</summary>
+
+```
+ad@k8s:~/8.2$ docker ps
+CONTAINER ID   IMAGE                 COMMAND            CREATED          STATUS          PORTS                                       NAMES
+e1939a584acc   pycontribs/centos:7   "sleep 60000000"   33 minutes ago   Up 33 minutes                                               vector-01
+5925f913a343   pycontribs/centos:7   "sleep 60000000"   34 minutes ago   Up 34 minutes   0.0.0.0:9000->9000/tcp, :::9000->9000/tcp   clickhouse-01
+```
 ```
 ad@k8s:~/8.2/playbook$ cat site.yml
 ---
 - name: Install Vector
   hosts: vector
-  # handlers:
-  #   - name: Start vector service
-  #     become: true
-  #     ansible.builtin.service:
-  #       name: vector-server
-  #       state: restarted
   tasks:
     - name: Get Vector distrib
       ansible.builtin.get_url:
@@ -65,7 +74,6 @@ ad@k8s:~/8.2/playbook$ cat site.yml
         src: templates/vector.sh.j2
         dest: /etc/profile.d/vector.sh
         mode: 0755
-#      notify: Start Vector service
       tags: env
 - name: Install Clickhouse
   hosts: clickhouse
@@ -121,7 +129,13 @@ export VECTOR_DIR={{ vector_dir }}
 export PATH=$PATH:$VECTOR_DIR/bin
 .vector --config /etc/vector/config/vector.toml
 ```
+</details>
+
 5. Запустите `ansible-lint site.yml` и исправьте ошибки, если они есть.
+
+<details>
+<summary>Lint</summary>
+
 ```
 ad@k8s:~/8.2$ ansible-lint playbook/site.yml
 WARNING  Overriding detected file kind 'yaml' with 'playbook' for given positional argument: playbook/site.yml
@@ -178,8 +192,13 @@ playbook/site.yml:37 Jinja2 template rewrite recommendation: `create_db.rc != 0 
 Finished with 0 failure(s), 1 warning(s) on 1 files.
 ```
 
+</details>
 
 6. Попробуйте запустить playbook на этом окружении с флагом `--check`.
+
+<details>
+<summary>--check</summary>
+
 ```
 ad@k8s:~/8.2/playbook$ ansible-playbook site.yml -i inventory/prod.yml --check
 
@@ -204,7 +223,13 @@ vector-01                  : ok=3    changed=2    unreachable=0    failed=1    s
 
 Вываливается ошибка т.к. с флагом --cheсk не создается папка, которая используется в task.
 
+</details>
+
 7. Запустите playbook на `prod.yml` окружении с флагом `--diff`. Убедитесь, что изменения на системе произведены.
+
+<details>
+<summary>--diff</summary>
+
 ```
 ad@k8s:~/8.2/playbook$ ansible-playbook site.yml -i inventory/prod.yml --diff
 
@@ -247,7 +272,14 @@ changed: [vector-01]
 PLAY RECAP *****************************************************************************************************************************************************************************************
 vector-01                  : ok=5    changed=4    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0 
 ```
+
+</details>
+
 8. Повторно запустите playbook с флагом `--diff` и убедитесь, что playbook идемпотентен.
+
+<details>
+<summary>--diff</summary>
+
 ```
 ad@k8s:~/8.2/playbook$ ansible-playbook site.yml -i inventory/prod.yml --diff
 
@@ -271,9 +303,18 @@ ok: [vector-01]
 PLAY RECAP *****************************************************************************************************************************************************************************************  
 vector-01                  : ok=4    changed=0    unreachable=0    failed=0    skipped=1    rescued=0    ignored=0
 ```
+
+</details>
+
 9. Подготовьте README.md файл по своему playbook. В нём должно быть описано: что делает playbook, какие у него есть параметры и теги.
 
+
+<details>
+<summary>Описание</summary>
+
 Плэйбук в первой таске скачивает дистрибутив с версией, указаной в group_vars/vector/vars.yml (тэг download), во второй создает папку по пути из group_vars/vector/vars.yml с нужными правами (тэг CD), в третьей распаковывает (тэг extract), в четвертой запускает с параметрами из шаблона templates/vector.sh.j2 (тэг env)
+
+</details>
 
 10. Готовый playbook выложите в свой репозиторий, поставьте тег `08-ansible-02-playbook` на фиксирующий коммит, в ответ предоставьте ссылку на него.
 
